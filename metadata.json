@@ -1,0 +1,6 @@
+{
+  "name": "Disbursement Portal",
+  "description": "A payment request form (PRF) management system with approval routing and audit trailing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

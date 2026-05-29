@@ -1,0 +1,139 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User account information and roles",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["Requestor", "Approver", "Receiver", "Administrator"] },
+        "signatureUrl": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "email", "displayName", "role", "isActive", "createdAt"]
+    },
+    "PrfRequest": {
+      "title": "Payment Request Form",
+      "description": "Disbursement portal Payment Request Form document",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "prfNumber": { "type": "string" },
+        "department": { "type": "string" },
+        "clientName": { "type": "string" },
+        "bank": { "type": "string" },
+        "billable": { "type": "boolean" },
+        "date": { "type": "string" },
+        "status": { "type": "string", "enum": ["Draft", "Pending Approval", "Approved", "Received", "Completed", "Rejected"] },
+        "totalAmount": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "requestorId": { "type": "string" },
+        "requestorName": { "type": "string" },
+        "requestorSignedAt": { "type": "string" },
+        "requestorSignatureUrl": { "type": "string" },
+        "approverId": { "type": "string" },
+        "approverName": { "type": "string" },
+        "approverSignedAt": { "type": "string" },
+        "approverSignatureUrl": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "receiverName": { "type": "string" },
+        "receiverSignedAt": { "type": "string" },
+        "receiverSignatureUrl": { "type": "string" },
+        "pdfDriveUrl": { "type": "string" },
+        "googleSheetId": { "type": "string" },
+        "spreadsheetUrl": { "type": "string" }
+      },
+      "required": ["id", "prfNumber", "department", "clientName", "bank", "billable", "date", "status", "totalAmount", "createdAt", "requestorId", "requestorName"]
+    },
+    "PrfLineItem": {
+      "title": "PRF Line Item",
+      "description": "Particulars line items for an expense or request",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "prfRequestId": { "type": "string" },
+        "date": { "type": "string" },
+        "description": { "type": "string" },
+        "amount": { "type": "number" }
+      },
+      "required": ["id", "prfRequestId", "date", "description", "amount"]
+    },
+    "PrfComment": {
+      "title": "PRF Comment",
+      "description": "A discussion, reasoning, or rejection note attached to a PRF",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "prfRequestId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userRole": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "prfRequestId", "userId", "userName", "userRole", "content", "createdAt"]
+    },
+    "PrfNotification": {
+      "title": "Notification",
+      "description": "In-app system notification for updates and requests",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "isRead": { "type": "boolean" },
+        "prfId": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "title", "message", "isRead", "prfId", "createdAt"]
+    },
+    "AuditLog": {
+      "title": "Audit Log",
+      "description": "Strict system audit logging",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userRole": { "type": "string" },
+        "action": { "type": "string" },
+        "details": { "type": "string" },
+        "previousValue": { "type": "string" },
+        "newValue": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "userId", "userName", "userRole", "action", "details", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Collection of user profiles matching user auth account ID."
+    },
+    "/prf_requests/{prfId}": {
+      "schema": "PrfRequest",
+      "description": "Collection of Payment Request Forms."
+    },
+    "/prf_line_items/{itemId}": {
+      "schema": "PrfLineItem",
+      "description": "Flat collection containing specific line items referencing their parent prfRequestId."
+    },
+    "/comments/{commentId}": {
+      "schema": "PrfComment",
+      "description": "Flat collection of comments referencing a prfRequestId."
+    },
+    "/notifications/{notifId}": {
+      "schema": "PrfNotification",
+      "description": "Flat collection of in-app notifications per user."
+    },
+    "/audit_logs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Flat security ledger of user actions."
+    }
+  }
+}
