@@ -19,6 +19,7 @@ interface UserUserProfile {
   displayName: string;
   email: string;
   role: UserRole;
+  roles?: UserRole[];
   isActive: boolean;
   signatureUrl: string | null;
 }
@@ -38,6 +39,7 @@ export default function DashboardView({
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showNotificationsOnly, setShowNotificationsOnly] = useState(false);
+  const isAdm = currentUser?.role === 'Administrator' || currentUser?.roles?.includes('Administrator');
 
   // Filter requests based on queries
   const filteredRequests = requests.filter((r) => {
@@ -106,42 +108,49 @@ export default function DashboardView({
 
 
       {/* 2. Impersonation Simulator Hub for seamless preview testing */}
-      <div className="border border-indigo-150 bg-indigo-50/40 rounded-xl p-5 shadow-2xs">
-        <div className="flex items-center gap-1.5 text-xs font-bold text-[#1E2D5A] tracking-wider uppercase mb-2">
-          <Layers className="w-4 h-4 text-[#1E2D5A]" />
-          INTEGRITY WORKFLOW TESTING & PREVIEW ROLE SWAPPER
+      {isAdm && (
+        <div className="border border-indigo-150 bg-indigo-50/40 rounded-xl p-5 shadow-2xs">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-[#1E2D5A] tracking-wider uppercase mb-2">
+            <Layers className="w-4 h-4 text-[#1E2D5A]" />
+            INTEGRITY WORKFLOW TESTING & PREVIEW ROLE SWAPPER
+          </div>
+          <div className="text-[11px] text-slate-500 mb-3.5 leading-relaxed">
+            Simulate the multi-role signature chain process. Select user profiles below to switch roles instantaneously between requestors, approvers, receivers, or administrators:
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {allUsers.map((u) => {
+              const isSelected = currentUser?.uid === u.uid;
+              const hasAdmin = u.roles?.includes('Administrator') || u.role === 'Administrator';
+              const hasApprove = u.roles?.includes('Approver') || u.role === 'Approver';
+              const hasReceive = u.roles?.includes('Receiver') || u.role === 'Receiver';
+              
+              const rolesDisplay = u.roles && u.roles.length > 0 ? u.roles.join(', ') : u.role;
+              return (
+                <button
+                  key={u.uid}
+                  onClick={() => onImpersonate(u.uid)}
+                  className={`flex flex-col items-start px-3 py-2 text-xs border rounded-lg transition text-left shrink-0 font-sans cursor-pointer ${
+                    isSelected
+                      ? 'bg-[#1E2D5A] border-[#1E2D5A] text-white shadow-md scale-[1.02]'
+                      : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  <span className="font-bold text-[11px] truncate max-w-[130px]">{u.displayName}</span>
+                  <span className={`text-[9px] mt-0.5 font-bold px-1 py-0.2 rounded border uppercase font-mono tracking-wider ${
+                    isSelected
+                      ? 'bg-white/20 border-white/30 text-white'
+                      : hasAdmin ? 'bg-indigo-50 border-indigo-100 text-indigo-700' :
+                        hasApprove ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                        hasReceive ? 'bg-blue-50 border-blue-100 text-blue-700' : 'bg-gray-50 border-gray-100 text-gray-700'
+                  }`}>
+                    {rolesDisplay}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <div className="text-[11px] text-slate-500 mb-3.5 leading-relaxed">
-          Simulate the multi-role signature chain process. Select user profiles below to switch roles instantaneously between requestors, approvers, receivers, or administrators:
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {allUsers.map((u) => {
-            const isSelected = currentUser?.uid === u.uid;
-            return (
-              <button
-                key={u.uid}
-                onClick={() => onImpersonate(u.uid)}
-                className={`flex flex-col items-start px-3 py-2 text-xs border rounded-lg transition text-left shrink-0 font-sans cursor-pointer ${
-                  isSelected
-                    ? 'bg-[#1E2D5A] border-[#1E2D5A] text-white shadow-md scale-[1.02]'
-                    : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
-                }`}
-              >
-                <span className="font-bold text-[11px] truncate max-w-[130px]">{u.displayName}</span>
-                <span className={`text-[9px] mt-0.5 font-bold px-1 py-0.2 rounded border uppercase font-mono tracking-wider ${
-                  isSelected
-                    ? 'bg-white/20 border-white/30 text-white'
-                    : u.role === 'Administrator' ? 'bg-indigo-50 border-indigo-100 text-indigo-700' :
-                      u.role === 'Approver' ? 'bg-amber-50 border-amber-100 text-amber-700' :
-                      u.role === 'Receiver' ? 'bg-blue-50 border-blue-100 text-blue-700' : 'bg-gray-50 border-gray-100 text-gray-700'
-                }`}>
-                  {u.role}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      )}
 
       {/* 3. Stat bento-grid cards matching Geometric Balance design */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -211,7 +220,7 @@ export default function DashboardView({
             )}
           </button>
 
-          {currentUser?.role === 'Requestor' || currentUser?.role === 'Administrator' ? (
+          {currentUser?.role === 'Requestor' || currentUser?.roles?.includes('Requestor') || currentUser?.role === 'Administrator' || currentUser?.roles?.includes('Administrator') ? (
             <button
               onClick={onCreateNew}
               className="flex items-center gap-1.5 px-4.5 py-2.5 bg-[#1E2D5A] text-white hover:bg-[#2e3e70] active:scale-95 transition rounded-xl text-xs font-bold font-sans shadow-md cursor-pointer"

@@ -7,6 +7,7 @@ export interface UserProfile {
   email: string;
   displayName: string;
   role: UserRole;
+  roles?: UserRole[];
   signatureUrl: string | null; // direct google drive link or data URL
   isActive: boolean;
   createdAt: string;
@@ -36,12 +37,14 @@ export interface PrfRequest {
   approverName: string | null;
   approverSignedAt: string | null;
   approverSignatureUrl: string | null;
+  approverSignatureUrl2?: string | null;
   
   // Receiver block
   receiverId: string | null;
   receiverName: string | null;
   receiverSignedAt: string | null;
   receiverSignatureUrl: string | null;
+  receiverSignatureUrl2?: string | null;
   
   pdfDriveUrl: string | null;
   googleSheetId: string | null;
@@ -114,10 +117,12 @@ export interface PRFSyncPayload {
   
   approverName: string | null;
   approverSignatureUrl: string | null;
+  approverSignatureUrl2?: string | null;
   approverSignedAt: string | null;
   
   receiverName: string | null;
   receiverSignatureUrl: string | null;
+  receiverSignatureUrl2?: string | null;
   receiverSignedAt: string | null;
   
   hasSecondaryForm?: boolean;

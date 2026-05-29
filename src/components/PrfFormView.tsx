@@ -44,6 +44,15 @@ export default function PrfFormView({
   const [lineDesc2, setLineDesc2] = useState('');
   const [lineAmt2, setLineAmt2] = useState('');
 
+  const handleDuplicateFromPrimary = () => {
+    setDepartment2(department);
+    setClientName2(clientName);
+    setBank2(bank);
+    setBillable2(billable);
+    setDate2(date);
+    setLineItems2(lineItems.map(item => ({ ...item })));
+  };
+
   // Signature state
   const [signatureBase64, setSignatureBase64] = useState<string | null>(null);
   const [signatureBase64_2, setSignatureBase64_2] = useState<string | null>(null);
@@ -325,7 +334,7 @@ export default function PrfFormView({
       return;
     }
     
-    if (submitAction === 'submit' && hasSecondaryForm && !signatureBase64_2 && !currentUser?.signatureUrl) {
+    if (submitAction === 'submit' && hasSecondaryForm && !signatureBase64_2) {
       setErrorMsg('Please draw and apply your sign-off signature for the secondary form below to authenticate workflow propagation.');
       return;
     }
@@ -794,38 +803,43 @@ export default function PrfFormView({
           </div>
 
           {/* Canvas Signator */}
-          {currentUser?.signatureUrl ? (
-            <div className="flex items-center gap-3 p-4 border border-emerald-200 bg-emerald-50 rounded-xl">
-              <span className="p-1.5 bg-emerald-100 text-emerald-700 rounded-full">
-                <CheckCircle className="w-5 h-5" />
-              </span>
-              <div className="text-xs text-emerald-950 font-medium">
-                <span className="font-bold">Signature Verified:</span> Your user profile already contains an active authentic signature link. We will overlay it automatically.
+          <div className="flex flex-col gap-4">
+            {currentUser?.signatureUrl ? (
+              <div className="flex items-center gap-3 p-4 border border-emerald-200 bg-emerald-50 rounded-xl">
+                <span className="p-1.5 bg-emerald-100 text-emerald-700 rounded-full">
+                  <CheckCircle className="w-5 h-5" />
+                </span>
+                <div className="text-xs text-emerald-950 font-medium">
+                  <span className="font-bold">Signature Verified:</span> Your user profile already contains an active authentic signature link. We will overlay it automatically as your primary signature.
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] uppercase tracking-widest font-extrabold text-[#1E2D5A] select-none">Authenticate Primary Signature Draw</label>
-              <SignaturePad onSave={(b64) => setSignatureBase64(b64)} />
-              {signatureBase64 && (
-                <div className="text-[10px] text-emerald-600 font-bold bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-md mt-1 w-max">
-                  ✓ Primary signature drawn and applied.
+            ) : (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] uppercase tracking-widest font-extrabold text-[#1E2D5A] select-none">Authenticate Primary Signature Draw</label>
+                <SignaturePad onSave={(b64) => setSignatureBase64(b64)} />
+                {signatureBase64 && (
+                  <div className="text-[10px] text-emerald-600 font-bold bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-md mt-1 w-max">
+                    ✓ Primary signature drawn and applied.
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {hasSecondaryForm && (
+              <div className="mt-2 flex flex-col gap-1.5 border-t border-slate-200 pt-4">
+                <label className="text-[11px] uppercase tracking-widest font-extrabold text-[#1E2D5A] select-none">Authenticate Secondary Signature Draw (Dual Form Requirement)</label>
+                <div className="p-2 border border-amber-250 bg-amber-50 text-amber-900 rounded-lg text-[11px] mb-1 leading-relaxed">
+                  <strong>Secondary Signature Required:</strong> Since you have added a secondary disbursement form, you must draw a second signature for the second placeholder document.
                 </div>
-              )}
-              
-              {hasSecondaryForm && (
-                <div className="mt-4 flex flex-col gap-1.5 border-t border-slate-200 pt-4">
-                  <label className="text-[11px] uppercase tracking-widest font-extrabold text-[#1E2D5A] select-none">Authenticate Secondary Signature Draw</label>
-                  <SignaturePad onSave={(b64) => setSignatureBase64_2(b64)} />
-                  {signatureBase64_2 && (
-                    <div className="text-[10px] text-emerald-600 font-bold bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-md mt-1 w-max">
-                      ✓ Secondary signature drawn and applied.
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+                <SignaturePad onSave={(b64) => setSignatureBase64_2(b64)} />
+                {signatureBase64_2 && (
+                  <div className="text-[10px] text-emerald-600 font-bold bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-md mt-1 w-max">
+                    ✓ Secondary signature drawn and applied.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Right: Submit actions columns */}

@@ -10,7 +10,7 @@ interface PrfDetailViewProps {
   auditLogs: AuditLog[];
   currentUser: UserProfile | null;
   onBack: () => void;
-  onTransition: (action: 'submit' | 'approve' | 'reject' | 'receive' | 'complete', signatureDataUrl: string | null, commentContent?: string) => Promise<void>;
+  onTransition: (action: 'submit' | 'approve' | 'reject' | 'receive' | 'complete', signatureDataUrl: string | null, commentContent?: string, signatureDataUrl2?: string | null) => Promise<void>;
   onPostComment: (content: string) => Promise<void>;
   onDelete?: () => Promise<void>;
 }
@@ -29,6 +29,7 @@ export default function PrfDetailView({
   const [commentContent, setCommentContent] = useState('');
   const [actionComment, setActionComment] = useState('');
   const [signatureData, setSignatureData] = useState<string | null>(null);
+  const [signatureData2, setSignatureData2] = useState<string | null>(null);
   const [isSignRequired, setIsSignRequired] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -52,9 +53,16 @@ export default function PrfDetailView({
 
   const handleAction = async (action: 'submit' | 'approve' | 'reject' | 'receive' | 'complete') => {
     setErrorMessage(null);
-    if ((action === 'approve' || action === 'receive') && !signatureData && !currentUser?.signatureUrl) {
-      setErrorMessage(`Please draw and apply your signature on the pad before performing this sign-off.`);
-      return;
+    const needsSecondSignature = prf.hasSecondaryForm;
+    if (action === 'approve' || action === 'receive') {
+      if (!signatureData && !currentUser?.signatureUrl) {
+        setErrorMessage(`Please draw and apply your primary signature before performing this sign-off.`);
+        return;
+      }
+      if (needsSecondSignature && !signatureData2) {
+        setErrorMessage(`This request contains dual disbursements. Please draw and apply your secondary signature on the second pad before performing this sign-off.`);
+        return;
+      }
     }
     if (action === 'reject' && !actionComment.trim()) {
       setErrorMessage('Please configure a rejection commentary detailing the changes required.');
@@ -63,10 +71,11 @@ export default function PrfDetailView({
 
     setIsSubmitting(true);
     try {
-      await onTransition(action, signatureData, action === 'reject' ? actionComment : undefined);
+      await onTransition(action, signatureData, action === 'reject' ? actionComment : undefined, signatureData2);
       // Reset actions
       setActionComment('');
       setSignatureData(null);
+      setSignatureData2(null);
     } catch (err: any) {
       console.error(err);
       setErrorMessage(err.message || 'Workflow transition failed.');
@@ -87,11 +96,16 @@ export default function PrfDetailView({
   };
 
   // Determine authorized actions depend on user roles
-  const canApprove = prf.status === 'Pending Approval' && (currentUser?.role === 'Approver' || currentUser?.role === 'Administrator');
-  const canReceive = prf.status === 'Approved' && (currentUser?.role === 'Receiver' || currentUser?.role === 'Administrator');
-  const canComplete = prf.status === 'Received' && (currentUser?.role === 'Receiver' || currentUser?.role === 'Administrator');
-  const canSubmitDraft = (prf.status === 'Draft' || prf.status === 'Rejected') && (currentUser?.role === 'Requestor' || currentUser?.role === 'Administrator');
-  const canDelete = onDelete && (currentUser?.role === 'Administrator' || (prf.requestorName === currentUser?.displayName && currentUser?.role === 'Requestor'));
+  const hasAppRole = currentUser?.role === 'Approver' || currentUser?.roles?.includes('Approver') || currentUser?.role === 'Administrator' || currentUser?.roles?.includes('Administrator');
+  const hasRecRole = currentUser?.role === 'Receiver' || currentUser?.roles?.includes('Receiver') || currentUser?.role === 'Administrator' || currentUser?.roles?.includes('Administrator');
+  const hasReqRole = currentUser?.role === 'Requestor' || currentUser?.roles?.includes('Requestor') || currentUser?.role === 'Administrator' || currentUser?.roles?.includes('Administrator');
+  const hasAdmRole = currentUser?.role === 'Administrator' || currentUser?.roles?.includes('Administrator');
+
+  const canApprove = prf.status === 'Pending Approval' && hasAppRole;
+  const canReceive = prf.status === 'Approved' && hasRecRole;
+  const canComplete = prf.status === 'Received' && hasRecRole;
+  const canSubmitDraft = (prf.status === 'Draft' || prf.status === 'Rejected') && hasReqRole;
+  const canDelete = onDelete && (hasAdmRole || (prf.requestorName === currentUser?.displayName && hasReqRole));
 
   const showSignBox = (canApprove || canReceive || canSubmitDraft) && !currentUser?.signatureUrl;
 
@@ -274,24 +288,47 @@ export default function PrfDetailView({
 
           <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
             {/* Signature Draw */}
-            {showSignBox ? (
-              <div className="md:col-span-7 flex flex-col gap-2 w-full">
-                <span className="text-xs font-black text-indigo-900 uppercase">1. DRAW YOUR VERIFICATION SIGNATURE</span>
-                <SignaturePad onSave={(b64) => setSignatureData(b64)} disabled={isSubmitting} />
-                {signatureData && (
-                  <div className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 border border-emerald-100 px-2 py-1 rounded w-max mt-1">
-                    ✓ Signature successfully drawn and locked.
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="md:col-span-7 p-4 border border-emerald-100 bg-emerald-50/50 text-emerald-950 rounded-xl text-xs font-medium h-max flex items-center gap-3">
-                <span className="p-1 px-1.5 bg-emerald-100 text-emerald-700 rounded-full font-bold">✓</span>
-                <div>
-                  <span className="font-bold">Authentic Profile Signature Ready:</span> Your user profile already stores an active signature. We will use it automatically without forcing re-draws.
+            <div className="md:col-span-7 flex flex-col gap-4 w-full">
+              {/* Primary Signature */}
+              {showSignBox ? (
+                <div className="flex flex-col gap-2 w-full">
+                  <span className="text-xs font-black text-indigo-900 uppercase">
+                    {prf.hasSecondaryForm ? '1. DRAW YOUR PRIMARY VERIFICATION SIGNATURE' : 'DRAW YOUR VERIFICATION SIGNATURE'}
+                  </span>
+                  <SignaturePad onSave={(b64) => setSignatureData(b64)} disabled={isSubmitting} />
+                  {signatureData && (
+                    <div className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 border border-emerald-100 px-2 py-1 rounded w-max mt-1">
+                      ✓ Primary signature successfully drawn and locked.
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="p-4 border border-emerald-100 bg-emerald-50/50 text-emerald-950 rounded-xl text-xs font-medium flex items-center gap-3">
+                  <span className="p-1 px-1.5 bg-emerald-100 text-emerald-700 rounded-full font-bold">✓</span>
+                  <div>
+                    <span className="font-bold">Authentic Profile Signature Ready:</span> Your user profile already stores an active signature. We will use it automatically for the primary sign-off without forcing re-draws.
+                  </div>
+                </div>
+              )}
+
+              {/* Secondary Signature Pad (for dual signatures) */}
+              {(canApprove || canReceive) && prf.hasSecondaryForm && (
+                <div className="flex flex-col gap-2 w-full border-t border-indigo-100 pt-4">
+                  <span className="text-xs font-black text-indigo-900 uppercase flex items-center gap-1">
+                    2. DRAW YOUR SECONDARY VERIFICATION SIGNATURE (DUAL FORM REQUIREMENT)
+                  </span>
+                  <div className="p-2 border border-amber-200 bg-amber-50 text-amber-900 rounded-lg text-[11px] mb-1 leading-relaxed">
+                    <strong>Dual Signatures:</strong> Since the requestor submitted two signatures, you must also provide two signatures for this request.
+                  </div>
+                  <SignaturePad onSave={(b64) => setSignatureData2(b64)} disabled={isSubmitting} />
+                  {signatureData2 && (
+                    <div className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 border border-emerald-100 px-2 py-1 rounded w-max mt-1">
+                      ✓ Secondary signature successfully drawn and locked.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Actions triggers */}
             <div className="md:col-span-5 flex flex-col gap-3.5 w-full">

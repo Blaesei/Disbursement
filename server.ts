@@ -351,8 +351,10 @@ app.post('/api/prf/sync', async (req, res) => {
     let requestorSignUrl2 = prf.requestorSignatureUrl2;
     let requestorTime = prf.requestorSignedAt;
     let approverSignUrl = prf.approverSignatureUrl;
+    let approverSignUrl2 = prf.approverSignatureUrl2 || null;
     let approverTime = prf.approverSignedAt;
     let receiverSignUrl = prf.receiverSignatureUrl;
+    let receiverSignUrl2 = prf.receiverSignatureUrl2 || null;
     let receiverTime = prf.receiverSignedAt;
     
     let approverName = prf.approverName;
@@ -377,7 +379,7 @@ app.post('/api/prf/sync', async (req, res) => {
       appliedDriveImgUrl = upRes.directUrl;
     }
     
-    let signatureUrlToApply2 = signatureDataUrl2 || prf.requestorSignatureUrl2 || null;
+    let signatureUrlToApply2 = signatureDataUrl2 || null;
     let appliedDriveImgUrl2 = signatureUrlToApply2;
     if (signatureUrlToApply2 && signatureUrlToApply2.startsWith('data:image')) {
       const uploadName2 = `Signature2_${prf.prfNumber}_${actorProfile.role}_${Date.now()}.png`;
@@ -394,18 +396,21 @@ app.post('/api/prf/sync', async (req, res) => {
     } else if (action === 'approve') {
       targetStatus = 'Approved';
       approverSignUrl = appliedDriveImgUrl || approverSignUrl;
+      approverSignUrl2 = appliedDriveImgUrl2 || approverSignUrl2;
       approverTime = systemTimeStr;
       approverName = actorProfile.displayName;
       approverId = actorProfile.uid;
     } else if (action === 'reject') {
       targetStatus = 'Rejected';
       approverSignUrl = null;
+      approverSignUrl2 = null;
       approverTime = null;
       approverName = null;
       approverId = null;
     } else if (action === 'receive') {
       targetStatus = 'Received';
       receiverSignUrl = appliedDriveImgUrl || receiverSignUrl;
+      receiverSignUrl2 = appliedDriveImgUrl2 || receiverSignUrl2;
       receiverTime = systemTimeStr;
       receiverName = actorProfile.displayName;
       receiverId = actorProfile.uid;
@@ -426,10 +431,12 @@ app.post('/api/prf/sync', async (req, res) => {
       approverName,
       approverId,
       approverSignatureUrl: approverSignUrl,
+      approverSignatureUrl2: approverSignUrl2,
       approverSignedAt: approverTime,
       receiverName,
       receiverId,
       receiverSignatureUrl: receiverSignUrl,
+      receiverSignatureUrl2: receiverSignUrl2,
       receiverSignedAt: receiverTime,
       updatedAt: new Date().toISOString()
     };
@@ -458,10 +465,12 @@ app.post('/api/prf/sync', async (req, res) => {
       
       approverName,
       approverSignatureUrl: approverSignUrl,
+      approverSignatureUrl2: approverSignUrl2,
       approverSignedAt: approverTime,
       
       receiverName,
       receiverSignatureUrl: receiverSignUrl,
+      receiverSignatureUrl2: receiverSignUrl2,
       receiverSignedAt: receiverTime,
       
       hasSecondaryForm: prf.hasSecondaryForm,

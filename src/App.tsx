@@ -40,6 +40,13 @@ import {
   ChevronRight
 } from 'lucide-react';
 
+export function hasUserRole(profile: UserProfile | null | undefined, targetRole: UserRole): boolean {
+  if (!profile) return false;
+  if (profile.role === targetRole) return true;
+  if (profile.roles?.includes(targetRole)) return true;
+  return false;
+}
+
 export default function App() {
   // Navigation State
   const [view, setView] = useState<'dashboard' | 'new-request' | 'edit-request' | 'detail' | 'admin'>('dashboard');
@@ -107,9 +114,16 @@ export default function App() {
 
           if (userSnap.exists()) {
             const profile = userSnap.data() as UserProfile;
-            if (targetRole && profile.role !== targetRole) {
-              const updatedProfile = { ...profile, role: targetRole };
-              await updateDoc(userRef, { role: targetRole });
+            const profileRoles = profile.roles || (profile.role ? [profile.role] : []);
+            
+            if (targetRole && !profileRoles.includes(targetRole)) {
+              const updatedRoles = Array.from(new Set([...profileRoles, targetRole]));
+              const updatedProfile = { ...profile, role: targetRole, roles: updatedRoles };
+              await updateDoc(userRef, { role: targetRole, roles: updatedRoles });
+              setCurrentUserProfile(updatedProfile);
+            } else if (!profile.roles) {
+              const updatedProfile = { ...profile, roles: profileRoles };
+              await updateDoc(userRef, { roles: profileRoles });
               setCurrentUserProfile(updatedProfile);
             } else {
               setCurrentUserProfile(profile);
@@ -122,6 +136,7 @@ export default function App() {
               email: user.email || '',
               displayName: user.displayName || 'Anonymous User',
               role: newRole,
+              roles: [newRole],
               signatureUrl: null,
               isActive: true,
               createdAt: new Date().toISOString()
@@ -584,12 +599,22 @@ export default function App() {
   };
 
   // Promote User admin tools (Client-side writes secured by Firestore Rules)
-  const handlePromoteAdmin = async (targetUid: string, role: UserRole) => {
+  const handlePromoteAdmin = async (targetUid: string, roles: UserRole[]) => {
     if (!currentUserProfile) return;
     
+    // Select primary role for backward compatibility
+    const primaryRole = roles.includes('Administrator')
+      ? 'Administrator'
+      : (roles.includes('Approver')
+          ? 'Approver'
+          : (roles.includes('Receiver')
+              ? 'Receiver'
+              : (roles[0] || 'Requestor')));
+
     // Perform update in Firestore directly, backed up by backend metadata validation
     await updateDoc(doc(db, 'users', targetUid), {
-      role,
+      role: primaryRole,
+      roles: roles,
       updatedAt: new Date().toISOString()
     });
 
@@ -601,7 +626,8 @@ export default function App() {
       },
       body: JSON.stringify({
         targetUid,
-        newRole: role
+        newRole: primaryRole,
+        newRoles: roles
       })
     });
 
@@ -613,7 +639,7 @@ export default function App() {
       userName: currentUserProfile.displayName,
       userRole: currentUserProfile.role,
       action: 'PROMOTE',
-      details: `Promoted profile ${targetUid} to the '${role}' role directly.`,
+      details: `Updated roles of profile ${targetUid} to: ${roles.join(', ')}.`,
       timestamp: new Date().toISOString()
     });
   };
@@ -735,7 +761,7 @@ export default function App() {
             {!isSidebarMini && <span className="text-sm font-medium whitespace-nowrap">Dashboard</span>}
           </button>
 
-          {(currentUserProfile?.role === 'Requestor' || currentUserProfile?.role === 'Administrator') && (
+          {(hasUserRole(currentUserProfile, 'Requestor') || hasUserRole(currentUserProfile, 'Administrator')) && (
             <button 
               onClick={() => { setSelectedPrfId(null); setView('new-request'); }}
               className={`w-full flex items-center gap-3 p-3 rounded-lg border transition duration-150 cursor-pointer text-left ${
@@ -752,7 +778,7 @@ export default function App() {
             </button>
           )}
 
-          {currentUserProfile?.role === 'Administrator' && (
+          {hasUserRole(currentUserProfile, 'Administrator') && (
             <button 
               onClick={() => setView('admin')}
               className={`w-full flex items-center gap-3 p-3 rounded-lg border transition duration-150 cursor-pointer text-left ${
@@ -781,8 +807,8 @@ export default function App() {
                   <p className="text-sm text-white font-medium truncate" title={currentUserProfile.displayName}>
                     {currentUserProfile.displayName}
                   </p>
-                  <p className="text-[10px] text-blue-300 uppercase font-mono tracking-wider">
-                    {currentUserProfile.role}
+                  <p className="text-[10px] text-blue-300 uppercase font-mono tracking-wider" title={currentUserProfile.roles?.join(', ')}>
+                    {currentUserProfile.roles && currentUserProfile.roles.length > 0 ? currentUserProfile.roles.join(', ') : currentUserProfile.role}
                   </p>
                 </div>
                 <button
@@ -811,8 +837,8 @@ export default function App() {
             <span className="font-bold tracking-tight text-sm font-display">STLAF PORTAL</span>
           </div>
           <div className="flex items-center gap-2 text-xs">
-            <span className="text-indigo-200 uppercase font-mono text-[9px] font-bold bg-white/10 px-1.5 py-0.5 rounded">
-              {currentUserProfile.role}
+            <span className="text-indigo-200 uppercase font-mono text-[9px] font-bold bg-white/10 px-1.5 py-0.5 rounded" title={currentUserProfile.roles?.join(', ')}>
+              {currentUserProfile.roles && currentUserProfile.roles.length > 0 ? currentUserProfile.roles.join(', ') : currentUserProfile.role}
             </span>
             <button onClick={handleSignOut} className="p-1 text-slate-300 hover:text-white cursor-pointer" title="Sign out">
               <LogOut className="w-4 h-4" />
@@ -828,7 +854,7 @@ export default function App() {
           >
             Dashboard
           </button>
-          {(currentUserProfile?.role === 'Requestor' || currentUserProfile?.role === 'Administrator') && (
+          {(hasUserRole(currentUserProfile, 'Requestor') || hasUserRole(currentUserProfile, 'Administrator')) && (
             <button
               onClick={() => { setSelectedPrfId(null); setView('new-request'); }}
               className={`px-3 py-1.5 rounded-lg font-medium transition cursor-pointer ${
@@ -838,7 +864,7 @@ export default function App() {
               New Request
             </button>
           )}
-          {currentUserProfile?.role === 'Administrator' && (
+          {hasUserRole(currentUserProfile, 'Administrator') && (
             <button
               onClick={() => setView('admin')}
               className={`px-3 py-1.5 rounded-lg font-medium transition cursor-pointer ${
@@ -961,7 +987,7 @@ export default function App() {
             />
           )}
 
-          {view === 'admin' && currentUserProfile?.role === 'Administrator' && (
+          {view === 'admin' && hasUserRole(currentUserProfile, 'Administrator') && (
             <AdminSettingsView
               onBack={() => setView('dashboard')}
               currentUser={currentUserProfile}

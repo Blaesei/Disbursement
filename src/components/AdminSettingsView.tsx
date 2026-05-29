@@ -10,7 +10,7 @@ interface AdminSettingsViewProps {
   googleConfigured: boolean | null;
   configKeys: any;
   onRefreshConfig: () => void;
-  onPromoteUser: (targetUid: string, role: UserRole) => Promise<void>;
+  onPromoteUser: (targetUid: string, roles: UserRole[]) => Promise<void>;
 }
 
 interface UserUserProfile {
@@ -18,6 +18,7 @@ interface UserUserProfile {
   displayName: string;
   email: string;
   role: UserRole;
+  roles?: UserRole[];
   isActive: boolean;
   signatureUrl: string | null;
 }
@@ -33,7 +34,7 @@ export default function AdminSettingsView({
   onPromoteUser
 }: AdminSettingsViewProps) {
   const [selectedUser, setSelectedUser] = useState('');
-  const [targetRole, setTargetRole] = useState<UserRole>('Requestor');
+  const [selectedRoles, setSelectedRoles] = useState<UserRole[]>([]);
   const [isPromoting, setIsPromoting] = useState(false);
   const [promoteStatus, setPromoteStatus] = useState<string | null>(null);
 
@@ -59,6 +60,18 @@ export default function AdminSettingsView({
     window.addEventListener('message', handleGoogleMessage);
     return () => window.removeEventListener('message', handleGoogleMessage);
   }, [onRefreshConfig]);
+
+  useEffect(() => {
+    if (selectedUser) {
+      const u = allUsers.find(user => user.uid === selectedUser);
+      if (u) {
+        const initialRoles = u.roles || (u.role ? [u.role] : []);
+        setSelectedRoles(initialRoles);
+      }
+    } else {
+      setSelectedRoles([]);
+    }
+  }, [selectedUser, allUsers]);
 
   const handleAuthorize = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,11 +112,15 @@ export default function AdminSettingsView({
   const handlePromote = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser) return;
+    if (selectedRoles.length === 0) {
+      setPromoteStatus('Error: Please select at least one role for this user.');
+      return;
+    }
     setIsPromoting(true);
     setPromoteStatus(null);
     try {
-      await onPromoteUser(selectedUser, targetRole);
-      setPromoteStatus(`Successfully promoted ${allUsers.find(u => u.uid === selectedUser)?.displayName} to ${targetRole}.`);
+      await onPromoteUser(selectedUser, selectedRoles);
+      setPromoteStatus(`Successfully updated roles for ${allUsers.find(u => u.uid === selectedUser)?.displayName} to [${selectedRoles.join(', ')}].`);
     } catch (err: any) {
       console.error(err);
       setPromoteStatus(`Error: ${err.message || 'Promotion failed.'}`);
@@ -151,24 +168,44 @@ export default function AdminSettingsView({
                 >
                   <option value="">-- Choose User profile --</option>
                   {allUsers.map(u => (
-                    <option key={u.uid} value={u.uid}>{u.displayName} ({u.role})</option>
+                    <option key={u.uid} value={u.uid}>{u.displayName} ({u.roles && u.roles.length > 0 ? u.roles.join(', ') : u.role})</option>
                   ))}
                 </select>
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] uppercase font-bold text-slate-500">Assign Target Role</label>
-                <select
-                  value={targetRole}
-                  onChange={(e) => setTargetRole(e.target.value as UserRole)}
-                  className="text-xs bg-slate-50 border border-slate-200 hover:border-slate-350 rounded-lg px-2.5 py-2 w-full text-slate-700 focus:outline-[#1E2D5A]"
-                >
-                  <option value="Requestor">Requestor Workflow</option>
-                  <option value="Approver">Finance Approver</option>
-                  <option value="Receiver">Payment Receiver</option>
-                  <option value="Administrator">Administrator console</option>
-                </select>
-              </div>
+              {selectedUser && (
+                <div className="flex flex-col gap-2 mt-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-500">Assign Roles (Check all that apply)</label>
+                  <div className="flex flex-col gap-2 bg-slate-50 border border-slate-100 p-3 rounded-lg">
+                    {[
+                      { value: 'Requestor', label: 'Requestor (Draft & Submit PRFs)' },
+                      { value: 'Approver', label: 'Finance Approver (Approve/Reject)' },
+                      { value: 'Receiver', label: 'Payment Receiver (Disburse & Sign)' },
+                      { value: 'Administrator', label: 'Administrator (Security Settings)' }
+                    ].map((item) => {
+                      const isChecked = selectedRoles.includes(item.value as UserRole);
+                      return (
+                        <label key={item.value} className="flex items-center gap-2 text-xs text-slate-700 font-medium cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {
+                              const roleVal = item.value as UserRole;
+                              setSelectedRoles((prev) => 
+                                prev.includes(roleVal)
+                                  ? prev.filter(r => r !== roleVal)
+                                  : [...prev, roleVal]
+                              );
+                            }}
+                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
+                          />
+                          <span>{item.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               <button
                 type="submit"

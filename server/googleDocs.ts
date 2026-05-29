@@ -268,8 +268,8 @@ function buildIndexBasedRequests(doc: any, prfData: PRFSyncPayload): any[] {
     { placeholder: '{{Signature3}}', url: prfData.receiverSignatureUrl },
     // Secondary signatures
     { placeholder: '{{Signature01}}', url: prfData.hasSecondaryForm ? (prfData.requestorSignatureUrl2 || prfData.requestorSignatureUrl) : null },
-    { placeholder: '{{Signature02}}', url: prfData.hasSecondaryForm ? prfData.approverSignatureUrl : null },
-    { placeholder: '{{Signature03}}', url: prfData.hasSecondaryForm ? prfData.receiverSignatureUrl : null },
+    { placeholder: '{{Signature02}}', url: prfData.hasSecondaryForm ? (prfData.approverSignatureUrl2 || prfData.approverSignatureUrl) : null },
+    { placeholder: '{{Signature03}}', url: prfData.hasSecondaryForm ? (prfData.receiverSignatureUrl2 || prfData.receiverSignatureUrl) : null },
   ];
 
   for (const { placeholder, url } of signatureSlots) {
@@ -415,8 +415,8 @@ export async function createPrfDoc(prfData: PRFSyncPayload) {
       { placeholder: '{{Signature3}}', url: prfData.receiverSignatureUrl },
       // Secondary signatures
       { placeholder: '{{Signature01}}', url: prfData.hasSecondaryForm ? (prfData.requestorSignatureUrl2 || prfData.requestorSignatureUrl) : null },
-      { placeholder: '{{Signature02}}', url: prfData.hasSecondaryForm ? prfData.approverSignatureUrl : null },
-      { placeholder: '{{Signature03}}', url: prfData.hasSecondaryForm ? prfData.receiverSignatureUrl : null },
+      { placeholder: '{{Signature02}}', url: prfData.hasSecondaryForm ? (prfData.approverSignatureUrl2 || prfData.approverSignatureUrl) : null },
+      { placeholder: '{{Signature03}}', url: prfData.hasSecondaryForm ? (prfData.receiverSignatureUrl2 || prfData.receiverSignatureUrl) : null },
     ];
 
     for (const { placeholder, url } of signatureSlots) {
