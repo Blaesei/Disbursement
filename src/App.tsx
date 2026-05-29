@@ -408,11 +408,11 @@ export default function App() {
         googleSheetId: previewDocumentData?.id || null,
         spreadsheetUrl: previewDocumentData?.url || null,
         hasSecondaryForm: formData.hasSecondaryForm || false,
-        department2: formData.department2 || undefined,
-        clientName2: formData.clientName2 || undefined,
-        bank2: formData.bank2 || undefined,
-        billable2: formData.billable2 || undefined,
-        date2: formData.date2 || undefined
+        department2: formData.department2 || null,
+        clientName2: formData.clientName2 || null,
+        bank2: formData.bank2 || null,
+        billable2: formData.billable2 || false,
+        date2: formData.date2 || null
       };
 
       await setDoc(doc(db, 'prf_requests', targetPrfId), nextPrfObj);
